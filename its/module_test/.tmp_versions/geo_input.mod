@@ -1,0 +1,2 @@
+/home/zero/its/linux-3.10.102/net/its/module_test/geo_input.ko
+/home/zero/its/linux-3.10.102/net/its/module_test/geo_input.o

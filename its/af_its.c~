@@ -1,0 +1,140 @@
+#include <linux/types.h>
+#include <linux/mm.h>
+#include <linux/capability.h>
+#include <linux/fcntl.h>
+#include <linux/socket.h>
+#include <linux/in.h>
+#include <linux/inet.h>
+#include <linux/netdevice.h>
+#include <linux/wireless.h>
+#include <linux/kernel.h>
+#include <linux/sockios.h>
+#include <linux/kmod.h>
+#include <linux/slab.h>
+#include <linux/vmalloc.h>
+#include <net/net_namespace.h>
+#include <net/ip.h>
+#include <net/protocol.h>
+#include <linux/skbuff.h>
+#include <linux/errno.h>
+#include <linux/timer.h>
+#include <asm/uaccess.h>
+#include <asm/ioctls.h>
+#include <asm/page.h>
+#include <asm/cacheflush.h>
+#include <asm/io.h>
+#include <linux/etherdevice.h>
+#include <linux/proc_fs.h>
+#include <linux/seq_file.h>
+#include <linux/poll.h>
+#include <linux/module.h>
+#include <linux/init.h>
+#include <linux/mutex.h>
+#include <linux/errqueue.h>
+#include <linux/net_tstamp.h>
+#include <net/p8022.h>
+#include <net/psnap.h>
+#include <linux/filter.h>
+#include <linux/sched.h>
+#include <trace/events/sock.h>
+
+
+struct btp_sock;
+
+static struct proro btp_proto;
+static const struct proto_ops btp_ops;
+
+
+static const struct net_proto_family btp_family_ops = {
+		.family = PF_BTP,
+		.create = btp_create,
+		.owner  = THIS_MODULE,
+};
+
+struct packet_type wsmp_packet_type __read_mostly = {
+		.type = cpu_to_be16(ETH_P_BTP),
+		.func = btp_rcv,
+};
+
+/* module init*/
+static int __init btp_init(void)
+{
+		int rc = proto_regester(&btp_proto, 0);
+		if(rc != 0)
+				goto out;
+		sock_register(&btp_proto, 0);
+
+		dev_add_pack(&btp_packet_type);//should have dev func???
+
+out:
+		return rc;
+}
+
+/* module exit */
+static void __exit btp_exit(void)
+{
+		dev_remove_pack(&btp_packet_type);
+
+		socket_unregister(PF_BTP);
+
+		proto_unregister(&btp_proto);
+}
+
+
+
+static int
+btp_create(struct net *net, struct socket *sock, int protocol, int kern)
+{
+		struct sock *sk;
+		struct btp_sock *bo;
+		int err;
+		printk(KERN_NOTICE"BTP_DEBUG: try to create a btp socket\n");
+		
+		/* L3 protocol, */
+		if(protocol != 0 && protocol != ETH_P_GEO)
+				return -EINVAL;
+		if(protocol == 0)
+				protocol = ETH_P_GEO;
+		if(sock->type != SOCK_DGRAM && sock->type != SOCK_RAW)
+				return -ESOCKNOSUPPORT;
+		sock->satate = SS_UNCONNECTED;
+
+		err = -EPERM;
+
+		if(sock->type == SOCK_RAW && !kern && !ns_capable(net->user_ns, CAP_NET_RAW))
+				goto out;
+
+		err = -ENOBUFS;
+		sk = sk_alloc(net, PF_BTP, GFP_KERNEL, &btp_proro);
+		if(sk == NULL)
+				goto out;
+
+		sock->ops = *btp_ops;
+
+		sock_init_data(sock, sk);
+
+		bo = btp_sk(sk);
+		sk->sk_family = PF_BTP;
+		sk->sk_protocol = protocol;
+		sk->sk_destruct = btp_sock_destruct;
+
+		//not bind sign-----wsmp use psid  = 0xff
+
+		sk_refcnt_debug_inc(sk);
+
+		preempt_disable();
+		sock_prot_inuse_add(net, &btp_proto, 1);
+		preempt_enable();
+		printk(KERNEL_NOTICE"BTP_DEBUG: btp socket create sucess\n");
+
+		return 0;
+out:
+		return err;
+}
+
+
+
+module_init(btp_init);
+module_exit(wsmp_exit);
+MODULE_LICENSE("GPL");
+MODULE_ALIAS_NETPROTO(PF_BTP);
