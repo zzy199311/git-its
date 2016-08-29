@@ -1,0 +1,12 @@
+this day:
+I finish input-part(it seems) with shb, and re-optimized the system architecture, making input.h and input.c.
+
+8.24:
+i found wrong about ghdr...so I need to change mang thing....good luck
+
+8.25:
+I rewrite mang functions, and now it can ruan successfully without 1609.4
+so I decided to write geo_input.c about more packet.
+but there are still something to do......
+a) the value and form of return
+b) see the include/linux/netdevice.h  according to Makefile path 

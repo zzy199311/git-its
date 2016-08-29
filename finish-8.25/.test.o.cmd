@@ -1,0 +1,1 @@
+cmd_/home/zero/its/linux-3.10.102/net/its/8.24/test.o := ld -m elf_i386   -r -o /home/zero/its/linux-3.10.102/net/its/8.24/test.o /home/zero/its/linux-3.10.102/net/its/8.24/geo_input.o /home/zero/its/linux-3.10.102/net/its/8.24/geo.o 

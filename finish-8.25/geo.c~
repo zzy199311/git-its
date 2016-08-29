@@ -1,0 +1,128 @@
+#include <linux/module.h>
+#include <linux/kernel.h>
+
+//#include "common.h"
+#include "geo.h"
+#include "geo_input.h"
+
+int geo_init(void)
+{
+        printk(KERN_INFO "Create a geo module!\n");
+        //form a skb from mac
+        char data[] = "this is a test shb packet from dev, to test if the function of geo_input could work!";
+        int data_len = sizeof(data);
+        char btp_hdr[] = "this is btp header";
+        int btp_len = sizeof(btp_hdr);
+        struct sk_buff *skb = 0;
+        struct geohdr_basic *gbhdr = 0;
+        int basic_len = sizeof(struct geohdr_basic);
+        struct geohdr_common *gchdr = 0;
+        int common_len = sizeof(struct geohdr_common);
+        struct geohdr_shb *gehdr = 0;
+        int extend_len = sizeof(struct geohdr_shb);
+        int length = data_len + btp_len + sizeof(struct geohdr_basic) + sizeof(struct geohdr_common) + sizeof(struct geohdr_shb);
+        printk(KERN_INFO "Total lenght of packet is %d\n",length);
+
+        skb = alloc_skb(length, GFP_KERNEL);
+        if(!skb)
+        {
+                printk(KERN_INFO "fail to alloc memeoy for shb_pakcet\n");
+                return -1;
+        }
+        printk(KERN_INFO "succeed to alloc memory\n");
+        printk(KERN_INFO "succeed to push, now write data to skb_data\n");
+        skb_reserve(skb, length);
+
+        unsigned char *p;
+        p = skb_push(skb,data_len);
+	    memcpy(p, &data[0], data_len);
+        printk(KERN_INFO "Data: %s\n", p);
+
+	    p = skb_push(skb, btp_len);
+	    memcpy(p, &btp_hdr[0], btp_len);
+        //memcpy(skb_push(skb, data_len), data, data_len);
+        //memcpy(skb_push(skb, btp_len), btp_hdr, btp_len);
+
+        skb_reset_transport_header(skb);
+        printk(KERN_INFO "Btp_data:%s\n", skb->transport_header);
+        printk(KERN_INFO "Btp_data_p:%s\n", p);
+        printk(KERN_INFO "Btp_data_data:%s\n", skb->data);
+        //gehdr = (struct geohdr_shb*) skb_push(skb, extend_len);
+	    p = skb_push(skb, extend_len);
+        gehdr = (struct geohdr_shb*) p;
+        //gchdr = (struct geohdr_common*) skb_push(skb, common_len);
+
+ 	//set shb header
+        unsigned char mac[] = "00:01:02:03:04:0f";
+        int i,v;
+        for(i=0;i<6;i++)
+        {
+            sscanf(mac+3*i,"%2x",&v);
+            //unsigned char new_mac[6];
+            //new_mac = gehdr->so_pv.GN_ADDR.;
+            *(gehdr->so_pv.GN_ADDR.macaddr + i) = (unsigned char)v;
+        }
+        gehdr->so_pv.tst = 12396;
+        gehdr->so_pv.latitude = 127623;
+        gehdr->so_pv.longitude = 86218;
+        gehdr->so_pv.pai = 1;
+        gehdr->so_pv.speed = 27000;
+        gehdr->so_pv.heading = 2700;
+        gehdr->reserved = 0;
+        printk(KERN_INFO "write data of shb header successfully\n");
+
+
+	    p = skb_push(skb, common_len);
+        gchdr = (struct geohdr_common*) p;
+
+	//set common header
+        gchdr->nexthdr = 1;
+        gchdr->reserved = 0;
+        gchdr->hdrt = 5;
+        gchdr->hdrst= 0;
+        gchdr->scf = 1;
+        gchdr->chan_offload = 1;
+        gchdr->tc_id = 1;
+        gchdr->flags = 1;
+        gchdr->pl = btp_len + data_len;
+        gchdr->mhl = 10;
+        gchdr->reserved1 = 0i;
+        printk(KERN_INFO "write data of common header successfully\n");
+       
+        //gbhdr = (struct geo_basic*) skb_push(skb, basic_len);
+	    p = skb_push(skb, basic_len);
+        gbhdr = (struct geohdr_basic*) p;
+        //set basic header
+        gbhdr->version = 1;
+        gbhdr->nexthdr = 1;
+        gbhdr->reserved = 0;
+        gbhdr->mul = 32;
+        gbhdr->base = 2;
+        gbhdr->rhl = 18;
+        printk(KERN_INFO "basic header:%2.2x\n",p);
+        printk(KERN_INFO "write data of basic header successfully\n");
+        skb_reset_network_header(skb);
+        
+        //push net header
+        //memcpy(skb_push(packet,extend_len), gehdr, extend_len);
+        //memcpy(skb_push(packet,common_len), gchdr, common_len);
+        //memcpy(skb_push(packet,basic_len), gbhdr, basic_len);
+        //skb->mac.raw = skb->data;
+        skb->pkt_type = PACKET_HOST;
+        //skb->dev = dev;
+        //skb->protocol = htons(ETH_P_ITS);
+        int  err;
+        err = geo_rcv(skb);
+        return err;
+}
+
+void geo_exit(void)
+{
+        printk(KERN_INFO "Exit geo module\n");
+}
+
+
+module_init(geo_init);
+module_exit(geo_exit);
+MODULE_LICENSE("GPL");
+MODULE_ALIAS_NETPROTO(GeoNetworking);
