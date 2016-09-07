@@ -1,0 +1,16 @@
+#include <stdio.h>
+
+int main()
+{
+int i;
+char mac[6];
+mac[0] = 0x00;
+mac[1] = 0x01;
+mac[2] = 0x02;
+mac[3] = 0x03;
+mac[4] = 0x04;
+mac[5] = 0xff;
+for(i = 0; i<6; i++)
+{
+printf("%x:", mac[i]);
+}

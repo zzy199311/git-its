@@ -1,0 +1,11 @@
+#include <stdio.h>
+
+void main()
+{
+enum ABC{
+A,
+B,
+C};
+
+printf("Length of enum is %d!\n",sizeof(enum ABC));
+}

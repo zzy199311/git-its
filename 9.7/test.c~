@@ -1,0 +1,10 @@
+#include <stdio.h>
+
+int main()
+{
+		char a[] = "this is a array";
+		char *p;
+        p = a;
+		printf("%s\n",p);
+		return 0;
+}
